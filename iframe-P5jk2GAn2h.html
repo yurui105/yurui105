@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>临时通道</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .container {
+            text-align: center;
+            color: #333;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2rem;
+            border-radius: 1rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 90%;
+        }
+        .expired-container {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 1.5rem;
+            padding: 3rem 2rem;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .expired-container.show {
+            display: block;
+        }
+        .expired-icon {
+            font-size: 5rem;
+            margin-bottom: 1.5rem;
+            animation: fadeIn 0.6s ease;
+        }
+        .expired-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+        .expired-message {
+            font-size: 1rem;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+        .expired-time {
+            font-size: 0.875rem;
+            color: #9ca3af;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            margin-top: 1.5rem;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #ff6b6b;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 0.5rem;
+            transition: background 0.3s;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+        .btn:hover {
+            background: #ff5252;
+        }
+        .guide-section {
+            background: rgba(255, 107, 107, 0.1);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+        .guide-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: #ff6b6b;
+        }
+        .guide-steps {
+            text-align: left;
+            margin: 1rem 0;
+        }
+        .guide-step {
+            margin: 0.8rem 0;
+            padding: 0.5rem;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 0.3rem;
+        }
+        .guide-step strong {
+            color: #ff6b6b;
+        }
+        .browser-icon {
+            font-size: 2rem;
+            margin: 0.5rem;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            border: 1px solid #ffeaa7;
+        }
+        .loading {
+            display: none;
+        }
+        .arrow-pointer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            color: #ff6b6b;
+            z-index: 1000;
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="guideContainer" style="display: none;">
+        <h2>测试通道 - 请在浏览器中打开</h2>
+        <p>检测到您在微信/QQ中访问<br>为了更好的体验，请在浏览器中打开</p>
+        
+        <div class="warning">
+            <strong>⚠️ 测试通道提醒：</strong><br>
+            此链接为测试通道生成<br>仅用于功能验证，不建议用于生产环境。
+        </div>
+        
+        <div class="guide-section">
+            <div class="guide-title">📱 打开方法</div>
+            <div class="guide-steps">
+                <div class="guide-step">
+                    <strong>1. 点击右上角</strong> "..." 按钮
+                </div>
+                <div class="guide-step">
+                    <strong>2. 选择</strong> "用默认浏览器打开"
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- 过期提示页面 -->
+    <div class="expired-container" id="expiredContainer">
+        <div class="expired-icon">⏰</div>
+        <h1 class="expired-title">链接已过期</h1>
+        <p class="expired-message">
+            此临时访问通道已失效<br>
+            如需访问，请重新生成链接
+        </p>
+        <div class="expired-time">
+            过期时间：<span id="expiredTime">--</span>
+        </div>
+    </div>
+    
+    <div class="loading" id="loadingContainer">
+        <p>正在跳转...</p>
+    </div>
+
+    <script>
+        // 过期时间检测
+        const expiryTime = 1761993784;
+        const now = Math.floor(Date.now() / 1000);
+        
+        if (expiryTime > 0 && now >= expiryTime) {
+            // 链接已过期，显示过期页面
+            document.getElementById('expiredContainer').classList.add('show');
+            document.getElementById('guideContainer').style.display = 'none';
+            
+            // 格式化过期时间
+            const expiredDate = new Date(expiryTime * 1000);
+            document.getElementById('expiredTime').textContent = expiredDate.toLocaleString('zh-CN');
+        } else {
+            // 未过期，继续正常逻辑
+            // 检测用户环境
+            function detectEnvironment() {
+                const ua = navigator.userAgent.toLowerCase();
+                
+                // 检测微信/QQ环境（排除QQ浏览器）
+                const isWeChatOrQQ = (ua.includes('micromessenger') || 
+                                     ua.includes('wechat')) && 
+                                    !ua.includes('qqbrowser');
+                
+                // 检测浏览器环境（更全面的检测）
+                const isBrowser = !isWeChatOrQQ && (
+                    ua.includes('chrome') || 
+                    ua.includes('firefox') || 
+                    ua.includes('safari') || 
+                    ua.includes('edge') || 
+                    ua.includes('opera') ||
+                    ua.includes('msie') ||
+                    ua.includes('trident') ||
+                    ua.includes('webkit') ||
+                    ua.includes('gecko') ||
+                    ua.includes('mozilla')
+                );
+                
+                return { isWeChatOrQQ, isBrowser };
+            }
+            
+            // 根据环境显示相应内容
+            const env = detectEnvironment();
+            
+            if (env.isWeChatOrQQ) {
+                // 在微信/QQ中，显示引导页面
+                document.getElementById('guideContainer').style.display = 'block';
+            } else if (env.isBrowser) {
+                // 在浏览器中，自动跳转
+                window.location.replace('http://linwenjing.haochebao.com.cn/c/LN1B');
+            } else {
+                // 其他环境，显示引导页面
+                document.getElementById('guideContainer').style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
